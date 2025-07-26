@@ -1,0 +1,31 @@
+{
+  "name": "linkedin-mcp-server",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "MCP Server for LinkedIn personal data",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "import": "tsx src/import.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "csv-parser": "^3.2.0",
+    "dotenv": "^17.2.1",
+    "fs-extra": "^11.3.0",
+    "papaparse": "^5.5.3",
+    "puppeteer": "^24.15.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "sqlite3": "^5.1.7",
+    "tsx": "^4.20.3"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^24.1.0",
+    "@types/papaparse": "^5.3.16",
+    "typescript": "^5.8.3"
+  }
+}

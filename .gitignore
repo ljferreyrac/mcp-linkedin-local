@@ -1,0 +1,8 @@
+# npm modules
+node_modules
+
+# build
+dist
+
+# linkedin data
+data
