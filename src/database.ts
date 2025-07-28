@@ -15,7 +15,7 @@ import {
 export class Database {
   private db: sqlite3.Database;
 
-  constructor(dbPath: string = "./data/linkedin.db") {
+  constructor(dbPath: string = "./data/linkedin.db") { // ✅ Cambiado path relativo
     // Ensure data directory exists
     fs.ensureDirSync(path.dirname(dbPath));
 
@@ -173,6 +173,9 @@ export class Database {
     const rows = (await all(
       "SELECT * FROM experience ORDER BY startDate DESC"
     )) as any[];
+    
+    console.error(`🔍 Experience rows found: ${rows.length}`);
+    
     return rows.map((row) => ({
       ...row,
       skills: row.skills ? JSON.parse(row.skills) : [],
@@ -214,18 +217,53 @@ export class Database {
   }
 
   async getCertifications(): Promise<Certification[]> {
-    const all = promisify(this.db.all.bind(this.db)) as (
-      sql: string,
-      params?: any[]
-    ) => Promise<any[]>;
-    const rows = (await all(
-      "SELECT * FROM certifications ORDER BY issueDate DESC"
-    )) as any[];
-    return rows.map((row) => ({
-      ...row,
-      skills: row.skills ? JSON.parse(row.skills) : [],
-      createdAt: new Date(row.createdAt),
-    }));
+    try {
+      const all = promisify(this.db.all.bind(this.db)) as (
+        sql: string,
+        params?: any[]
+      ) => Promise<any[]>;
+      
+      const rows = (await all(
+        "SELECT * FROM certifications ORDER BY issueDate DESC"
+      )) as any[];
+      
+      // ✅ Debug mejorado
+      console.error(`🏆 Found ${rows.length} certification rows`);
+      console.error(`🔍 Sample row:`, rows[0]); // Solo muestra el primero
+      
+      if (rows.length === 0) {
+        console.error(`❌ No certifications found in database`);
+        return [];
+      }
+      
+      const processed = rows.map((row, index) => {
+        try {
+          const certification = {
+            ...row,
+            skills: row.skills ? JSON.parse(row.skills) : [],
+            createdAt: new Date(row.createdAt),
+          };
+          
+          // Debug solo para las primeras 2
+          if (index < 2) {
+            console.error(`✅ Processed cert ${index}:`, certification.name);
+          }
+          
+          return certification;
+        } catch (error) {
+          console.error(`❌ Error processing certification ${index}:`, error);
+          console.error(`Raw row:`, row);
+          return null;
+        }
+      }).filter(Boolean); // Filtrar nulls
+      
+      console.error(`✅ Successfully processed ${processed.length} certifications`);
+      return processed as Certification[];
+      
+    } catch (error) {
+      console.error(`💥 Database error in getCertifications:`, error);
+      throw error;
+    }
   }
 
   async insertCertifications(certifications: Certification[]): Promise<void> {
@@ -234,26 +272,34 @@ export class Database {
       params?: any[]
     ) => Promise<any>;
 
+    console.error(`📥 Inserting ${certifications.length} certifications`);
+    
     await run("DELETE FROM certifications");
 
     for (const cert of certifications) {
-      await run(
-        `
-        INSERT INTO certifications 
-        (id, name, issuingOrganization, issueDate, expirationDate, credentialId, credentialUrl, skills)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-        [
-          cert.id,
-          cert.name,
-          cert.issuingOrganization,
-          cert.issueDate,
-          cert.expirationDate,
-          cert.credentialId,
-          cert.credentialUrl,
-          JSON.stringify(cert.skills || []),
-        ]
-      );
+      try {
+        await run(
+          `
+          INSERT INTO certifications 
+          (id, name, issuingOrganization, issueDate, expirationDate, credentialId, credentialUrl, skills)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+          [
+            cert.id,
+            cert.name,
+            cert.issuingOrganization,
+            cert.issueDate,
+            cert.expirationDate,
+            cert.credentialId,
+            cert.credentialUrl,
+            JSON.stringify(cert.skills || []),
+          ]
+        );
+        console.error(`✅ Inserted: ${cert.name}`);
+      } catch (error) {
+        console.error(`❌ Error inserting certification:`, cert.name, error);
+        throw error;
+      }
     }
   }
 
@@ -265,6 +311,9 @@ export class Database {
     const rows = (await all(
       "SELECT * FROM skills ORDER BY endorsements DESC"
     )) as any[];
+    
+    console.error(`🛠️ Skills rows found: ${rows.length}`);
+    
     return rows.map((row) => ({
       ...row,
       featured: Boolean(row.featured),
@@ -354,6 +403,40 @@ export class Database {
       connectedAt: row.connectedAt ? new Date(row.connectedAt) : undefined,
       createdAt: new Date(row.createdAt),
     }));
+  }
+
+  // ✅ Método de debug añadido
+  async debugDatabase(): Promise<void> {
+    const all = promisify(this.db.all.bind(this.db)) as (
+      sql: string,
+      params?: any[]
+    ) => Promise<any[]>;
+    
+    console.error('\n🔍 DATABASE DEBUG INFO:');
+    console.error('========================');
+    
+    try {
+      // Check tables exist
+      const tables = await all(`
+        SELECT name FROM sqlite_master 
+        WHERE type='table' 
+        ORDER BY name
+      `);
+      console.error(`📊 Tables: ${tables.map(t => t.name).join(', ')}`);
+      
+      // Count rows in each table
+      for (const table of tables) {
+        const count = await all(`SELECT COUNT(*) as count FROM ${table.name}`);
+        console.error(`📈 ${table.name}: ${count[0].count} rows`);
+      }
+      
+      // Sample certification data
+      const certSample = await all(`SELECT * FROM certifications LIMIT 3`);
+      console.error(`🏆 Sample certifications:`, certSample);
+      
+    } catch (error) {
+      console.error(`💥 Debug error:`, error);
+    }
   }
 
   async close(): Promise<void> {

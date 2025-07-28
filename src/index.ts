@@ -8,10 +8,6 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { Database } from './database.js';
 import { LinkedInDataImporter } from './import-data.js';
-import * as dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
 
 class LinkedInMCPServer {
   private server: Server;
